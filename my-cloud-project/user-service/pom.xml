@@ -35,7 +35,7 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <!-- Spring Cloud Starters -->
-        <!--  <dependency>
+          <dependency>
              <groupId>org.springframework.cloud</groupId>
              <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
          </dependency>
@@ -46,7 +46,7 @@
          <dependency>
              <groupId>org.springframework.cloud</groupId>
              <artifactId>spring-cloud-starter-bootstrap</artifactId>
-         </dependency>-->
+         </dependency>
          <dependency>
              <groupId>org.springframework.cloud</groupId>
              <artifactId>spring-cloud-starter-loadbalancer</artifactId>

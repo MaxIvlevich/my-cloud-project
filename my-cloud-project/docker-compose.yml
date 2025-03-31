@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   postgres:
@@ -9,13 +7,19 @@ services:
       POSTGRES_DB: users_db
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - my_cloud_network
+    healthcheck:
+          # Проверяем, готова ли БД принимать подключения под нужным пользователем
+          test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-users_db}" ]
+          interval: 10s
+          timeout: 5s
+          retries: 5
+          start_period: 10s
 
   # 2. Config Server
   config-server:
@@ -24,14 +28,19 @@ services:
     ports:
       - "8888:8888"
     environment:
-
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-    depends_on:
-      - eureka-server
-      - postgres
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health
     networks:
-      - my_cloud_network
-
+        - my_cloud_network
+    depends_on:
+       eureka-server:
+        condition: service_healthy
+    healthcheck:
+          test: [ "CMD", "curl", "-f", "http://localhost:8888/actuator/health" ]
+          interval: 15s
+          timeout: 5s
+          retries: 10
+          start_period: 40s
   # 3. Eureka Server
   eureka-server:
     build: ./eureka-server
@@ -40,6 +49,13 @@ services:
       - "8761:8761"
     networks:
       - my_cloud_network
+    healthcheck:
+        test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
+        interval: 15s
+        timeout: 5s
+        retries: 10
+        start_period: 30s
+
 
   # 4. User Service
   user-service:
@@ -54,10 +70,15 @@ services:
       SPRING_DATASOURCE_USERNAME: user
       SPRING_DATASOURCE_PASSWORD: password
 
+
     depends_on:
-      - postgres
-      - config-server
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      config-server:
+          condition: service_healthy
+      eureka-server:
+        condition: service_started
+
     networks:
       - my_cloud_network
 
@@ -71,14 +92,17 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/users_db
       SPRING_DATASOURCE_USERNAME: user
       SPRING_DATASOURCE_PASSWORD: password
-
-    depends_on:
-      - postgres
-      - config-server
-      - eureka-server
-
     networks:
-      - my_cloud_network
+        - my_cloud_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+
+
 
   # 6. API Gateway
   api-gateway:
@@ -90,12 +114,15 @@ services:
       CONFIG_SERVER_URI: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       SERVER_PORT: 8080
-    depends_on:
-      - config-server
-      - eureka-server
-
     networks:
-      - my_cloud_network
+        - my_cloud_network
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+
+
 
 
 networks:
