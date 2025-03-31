@@ -28,6 +28,7 @@ services:
 
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
     depends_on:
+      - eureka-server
       - postgres
     networks:
       - my_cloud_network
@@ -38,13 +39,7 @@ services:
     container_name: eureka_server_app
     ports:
       - "8761:8761"
-    depends_on:
-      - config-server
 
-    environment:
-      SPRING_CONFIG_IMPORT: configserver:http://config-server:8888
-      EUREKA_SERVER_PORT: 8761
-      EUREKA_INSTANCE_HOSTNAME: eureka-server
     networks:
       - my_cloud_network
 
