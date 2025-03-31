@@ -6,8 +6,7 @@ services:
     image: postgres:15-alpine
     container_name: postgres_db
     environment:
-
-      POSTGRES_DB_USER: users_db
+      POSTGRES_DB: users_db
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
 
@@ -39,7 +38,6 @@ services:
     container_name: eureka_server_app
     ports:
       - "8761:8761"
-
     networks:
       - my_cloud_network
 
