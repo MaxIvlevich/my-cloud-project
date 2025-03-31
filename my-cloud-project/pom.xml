@@ -3,12 +3,10 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <groupId>max.iv</groupId>
     <artifactId>my-cloud-project</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <packaging>pom</packaging> <!-- Правильно: родительский POM -->
-
+    <packaging>pom</packaging>
     <name>my-cloud-project</name>
     <description>Parent project for cloud microservices</description>
 
@@ -27,6 +25,8 @@
         <lombok.version>1.18.36</lombok.version>
         <postgres.version>42.7.5</postgres.version>
         <mapstruct.version>1.6.3</mapstruct.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
     <dependencyManagement>
@@ -66,10 +66,8 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
     <dependencies>
     </dependencies>
-
     <build>
         <pluginManagement>
             <plugins>
@@ -88,10 +86,11 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.13.0</version>
+                    <version>3.11.0</version>
                     <configuration>
                         <source>${java.version}</source>
                         <target>${java.version}</target>
+                        <encoding>${project.build.sourceEncoding}</encoding>
                         <annotationProcessorPaths>
                             <path>
                                 <groupId>org.projectlombok</groupId>
@@ -104,10 +103,13 @@
                                 <version>${mapstruct.version}</version>
                             </path>
                         </annotationProcessorPaths>
+                        <compilerArgs>
+                            <arg>-Amapstruct.defaultComponentModel=spring</arg>
+                            <arg>-Amapstruct.unmappedTargetPolicy=IGNORE</arg>
+                        </compilerArgs>
                     </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
     </build>
-
 </project>

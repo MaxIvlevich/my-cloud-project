@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-company-employee-table
+      author: your_name
+      changes:
+        - createTable:
+            tableName: company_employee
+            columns:
+              - column:
+                  name: company_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_comp_employee_company
+                    references: company(id)
+              - column:
+                  name: employee_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: company_employee
+            columnNames: company_id, employee_id
+            constraintName: pk_company_employee

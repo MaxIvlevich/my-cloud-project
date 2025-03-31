@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-company-table
+      author: your_name
+      changes:
+        - createTable:
+            tableName: company
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: company_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: budget
+                  type: DECIMAL(19, 4)

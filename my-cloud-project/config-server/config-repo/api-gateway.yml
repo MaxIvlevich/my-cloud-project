@@ -1,0 +1,21 @@
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+        routes:
+          - id: user_route
+            uri: lb://user-service
+            predicates:
+              - Path=/api/v1/users/**
+              - id: company_rout
+                uri: lb://company-service
+                predicates:
+                 - Path=/api/v1/companies/**
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

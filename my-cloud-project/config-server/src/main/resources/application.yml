@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: config-server
+  # ---  Config Server ---
+  cloud:
+    config:
+      server:
+            git:
+             uri: https://github.com/MaxIvlevich/my-cloud-project
+             default-label: master
+server:
+  port: 8888
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://eureka-server:8761/eureka/}
+  instance:
+     prefer-ip-address: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
