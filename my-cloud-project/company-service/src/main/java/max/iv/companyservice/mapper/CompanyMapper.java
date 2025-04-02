@@ -16,19 +16,22 @@ public interface CompanyMapper {
 
     @Mapping(target = "employees", ignore = true)
     CompanyDto toCompanyDto(Company company);
-
+    @CompanyWithEmployeesMapper
     @Mapping(source = "company.id", target = "id")
     @Mapping(source = "company.companyName", target = "companyName")
     @Mapping(source = "company.budget", target = "budget")
-    @Mapping(source = "employees", target = "employees") // Передаем готовый список сотрудников
+    @Mapping(source = "employees", target = "employees")
     CompanyDto toCompanyDtoWithEmployees(Company company, List<UserDto> employees);
     List<CompanyDto> toCompanyDtoList(List<Company> companies);
 
-    @Mapping(target = "id", ignore = true) // ID генерируется БД
-    @Mapping(target = "employeeIds", ignore = true) // Сотрудники добавляются отдельно
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "employeeIds", ignore = true)
     Company createCompanyDtoToCompany(CreateCompanyDto createCompanyDto);
 
-    @Mapping(target = "id", ignore = true) // Не обновляем ID
-    @Mapping(target = "employeeIds", ignore = true) // Не обновляем список ID здесь
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "employeeIds", ignore = true)
     void updateCompanyFromDto(UpdateCompanyDto updateCompanyDto, @MappingTarget Company company);
+    @SimpleCompanyMapper
+    @Mapping(target = "employees", ignore = true)
+    CompanyDto toSimpleCompanyDto(Company company);
 }

@@ -24,7 +24,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserDto> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserDto> getUserById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
@@ -35,12 +35,12 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserDto> updateUser(@PathVariable Long id, @RequestBody UpdateUserDto updateUserDto) {
+    public ResponseEntity<UserDto> updateUser(@PathVariable("id") Long id, @RequestBody UpdateUserDto updateUserDto) {
         return ResponseEntity.ok(userService.updateUser(id, updateUserDto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable("id") Long id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build(); // Возвращаем 204 No Content
     }
@@ -52,4 +52,13 @@ public class UserController {
         }
         return ResponseEntity.ok(userService.getUsersByIds(ids));
     }
+    @PutMapping("/{userId}/company")
+    public ResponseEntity<Void> setUserCompany(
+            @PathVariable("userId") Long userId,
+            @RequestBody(required = false) Long companyId) {
+        userService.setUserCompany(userId, companyId);
+        return ResponseEntity.ok().build();
+    }
+
+
 }

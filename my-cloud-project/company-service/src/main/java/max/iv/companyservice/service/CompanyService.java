@@ -11,13 +11,15 @@ import max.iv.companyservice.model.Company;
 import max.iv.companyservice.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils; // Для проверки коллекций
+import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +29,7 @@ public class CompanyService {
     private final CompanyRepository companyRepository;
     private final CompanyMapper companyMapper;
     private final UserServiceClient userServiceClient;
+
     private List<UserDto> fetchEmployees(List<Long> employeeIds) {
         if (CollectionUtils.isEmpty(employeeIds)) {
             return Collections.emptyList();
@@ -43,20 +46,17 @@ public class CompanyService {
             }
             return employees;
         } catch (Exception e) {
-            // Логируем ошибку вызова user-service
             log.error("Failed to fetch employee details for IDs {}: {}", employeeIds, e.getMessage());
-            // Возвращаем пустой список в случае ошибки, чтобы не ломать основной запрос
             return Collections.emptyList();
         }
     }
 
-    // --- Метод для маппинга Company -> CompanyDto с сотрудниками ---
+
     private CompanyDto mapCompanyToDtoWithEmployees(Company company) {
         List<UserDto> employees = fetchEmployees(company.getEmployeeIds());
         return companyMapper.toCompanyDtoWithEmployees(company, employees);
     }
 
-    // --- CRUD Операции ---
 
     @Transactional(readOnly = true)
     public List<CompanyDto> getAllCompanies() {
@@ -101,7 +101,6 @@ public class CompanyService {
         Company company = companyMapper.createCompanyDtoToCompany(createCompanyDto);
         Company savedCompany = companyRepository.save(company);
         log.info("Company created with id: {}", savedCompany.getId());
-        // Возвращаем DTO без сотрудников, так как они не были добавлены при создании
         return companyMapper.toCompanyDtoWithEmployees(savedCompany, Collections.emptyList());
     }
 
@@ -114,7 +113,6 @@ public class CompanyService {
         companyMapper.updateCompanyFromDto(updateCompanyDto, existingCompany);
         Company updatedCompany = companyRepository.save(existingCompany);
         log.info("Company updated with id: {}", updatedCompany.getId());
-        // Возвращаем обновленную компанию с ее текущим списком сотрудников
         return mapCompanyToDtoWithEmployees(updatedCompany);
     }
 
@@ -127,24 +125,48 @@ public class CompanyService {
         companyRepository.deleteById(id);
         log.info("Company deleted with id: {}", id);
     }
+
     @Transactional
     public CompanyDto addEmployeeToCompany(Long companyId, Long employeeId) {
         log.info("Adding employee {} to company {}", employeeId, companyId);
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + companyId));
-
-        // TODO: Дополнительно можно проверить, существует ли сотрудник с employeeId в user-service
-
+        try {
+            log.debug("Checking existence of employee with ID: {}", employeeId);
+            userServiceClient.getUserById(employeeId);
+            log.debug("Employee {} found via user-service.", employeeId);
+        } catch (Exception e) {
+            //throw new ResourceNotFoundException("Employee not found:" + employeeId);
+            log.error("Error checking employee {} via user-service: {}", employeeId, e.getMessage(), e);
+        }
+        boolean added = false;
         if (!company.getEmployeeIds().contains(employeeId)) {
             company.getEmployeeIds().add(employeeId);
             companyRepository.save(company);
-            log.info("Employee {} added successfully", employeeId);
+            added = true;
+            log.info("Employee {} reference added locally to company {}", employeeId, companyId);
         } else {
             log.warn("Employee {} already exists in company {}", employeeId, companyId);
         }
-        return mapCompanyToDtoWithEmployees(company); // Возвращаем обновленную компанию
-    }
+        if (added) {
+            try {
+                log.debug("Attempting to set companyId {} for user {}", companyId, employeeId);
+                ResponseEntity<Void> response = userServiceClient.setUserCompany(employeeId, companyId);
+                if (!response.getStatusCode().is2xxSuccessful()) {
 
+                    log.warn("User service responded with status {} while setting company for user {}",
+                            response.getStatusCode(), employeeId);
+                }
+                log.info("Successfully notified user-service to set company for user {}", employeeId);
+            } catch (Exception e) {
+                log.error("Failed to notify user-service to set company for user {}: {}", employeeId, e.getMessage());
+
+            }
+        }
+
+
+        return mapCompanyToDtoWithEmployees(company);
+    }
     @Transactional
     public CompanyDto removeEmployeeFromCompany(Long companyId, Long employeeId) {
         log.info("Removing employee {} from company {}", employeeId, companyId);
@@ -154,10 +176,33 @@ public class CompanyService {
         boolean removed = company.getEmployeeIds().remove(employeeId);
         if (removed) {
             companyRepository.save(company);
-            log.info("Employee {} removed successfully", employeeId);
+            log.info("Employee {} reference removed locally from company {}", employeeId, companyId);
+            try {
+                log.debug("Attempting to clear companyId for user {}", employeeId);
+                ResponseEntity<Void> response = userServiceClient.setUserCompany(employeeId, null);
+                if (!response.getStatusCode().is2xxSuccessful()) {
+                    log.warn("User service responded with status {} while clearing company for user {}",
+                            response.getStatusCode(), employeeId);
+                }
+                log.info("Successfully notified user-service to clear company for user {}", employeeId);
+            } catch (Exception e) {
+                log.error("Failed to notify user-service to clear company for user {}: {}", employeeId, e.getMessage());
+            }
         } else {
             log.warn("Employee {} not found in company {}", employeeId, companyId);
         }
-        return mapCompanyToDtoWithEmployees(company); // Возвращаем обновленную компанию
+        return mapCompanyToDtoWithEmployees(company);
+    }
+    @Transactional(readOnly = true)
+    public List<CompanyDto> getCompaniesByIds(List<Long> ids) {
+        log.debug("Fetching companies by IDs: {}", ids);
+        if (CollectionUtils.isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        List<Company> companies = companyRepository.findAllById(ids);
+        return companies.stream()
+                .map(companyMapper::toSimpleCompanyDto)
+                .collect(Collectors.toList());
     }
 }
+
