@@ -1,9 +1,21 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/companies_db}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/users_db}
     username: ${SPRING_DATASOURCE_USERNAME:user}
     password: ${SPRING_DATASOURCE_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: validate # Тоже через Liquibase
+    jpa:
+      hibernate:
+        ddl-auto: validate
+      show-sql: true
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.PostgreSQLDialect
+          format_sql: true
+  liquibase:
+      change-log: classpath:/db/changelog/changelog-master.yaml
+management:
+      endpoints:
+        web:
+          exposure:
+            include: health

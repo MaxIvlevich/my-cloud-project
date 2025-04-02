@@ -2,12 +2,13 @@ spring:
   application:
     name: config-server
   # ---  Config Server ---
+  profiles:
+    active: native
   cloud:
     config:
       server:
-            git:
-             uri: https://github.com/MaxIvlevich/my-cloud-project
-             default-label: master
+        native:
+         search-locations: file:///etc/config-repo
 server:
   port: 8888
 eureka:
@@ -20,4 +21,4 @@ management:
   endpoints:
     web:
       exposure:
-        include: "*"
+        include: health

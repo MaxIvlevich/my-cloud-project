@@ -1,25 +1,29 @@
 spring:
   datasource:
-
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/users_db}
     username: ${SPRING_DATASOURCE_USERNAME:user}
     password: ${SPRING_DATASOURCE_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: true
-    properties:
+    jpa:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-  liquibase:
-    change-log: classpath:/db/changelog/db.changelog-master.yaml
-
+        ddl-auto: validate
+      show-sql: true
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.PostgreSQLDialect
+          format_sql: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
 services:
   company:
     name: ${COMPANY_SERVICE_NAME:company-service}
 
-logging:
-  level:
-    max.iv.userservice: DEBUG
+
+
+
+
+
+

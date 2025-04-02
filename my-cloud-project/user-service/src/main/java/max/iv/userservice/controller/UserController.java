@@ -31,7 +31,6 @@ public class UserController {
     @PostMapping
     public ResponseEntity<UserDto> createUser(@RequestBody CreateUserDto createUserDto) {
         UserDto createdUser = userService.createUser(createUserDto);
-        // Возвращаем 201 Created и ссылку на созданный ресурс (опционально)
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
     }
 

@@ -4,9 +4,9 @@ spring:
   cloud:
     config:
       uri: ${CONFIG_SERVER_URI:http://config-server:8888}
-      fail-fast: true # Оставляем fail-fast, но добавляем retry
+      fail-fast: true
       retry:
-        initial-interval: 2000  # Первая попытка через 2 сек
-        max-interval: 10000 # Максимальный интервал между попытками 10 сек
-        multiplier: 1.5     # Увеличивать интервал в 1.5 раза
+        initial-interval: 2000
+        max-interval: 10000
+        multiplier: 1.5
         max-attempts: 10

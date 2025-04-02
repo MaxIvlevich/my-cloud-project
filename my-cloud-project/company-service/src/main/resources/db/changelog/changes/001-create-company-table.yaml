@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: create-company-table
-      author: your_name
+      author: Max
       changes:
         - createTable:
             tableName: company

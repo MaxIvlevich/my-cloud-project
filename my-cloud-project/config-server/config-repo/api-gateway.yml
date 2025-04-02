@@ -3,19 +3,25 @@ spring:
     gateway:
       discovery:
         locator:
-          enabled: true
+          enabled: false
           lower-case-service-id: true
-        routes:
-          - id: user_route
-            uri: lb://user-service
-            predicates:
-              - Path=/api/v1/users/**
-              - id: company_rout
-                uri: lb://company-service
-                predicates:
-                 - Path=/api/v1/companies/**
+      routes:
+        - id: user_route
+          uri: lb://user-service
+          predicates:
+          - Path=/api/v1/users/**
+        - id: company_rout
+          uri: lb://company-service
+          predicates:
+          - Path=/api/v1/companies/**
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        include: '*'
+logging:
+      level:
+       org.springframework.cloud.gateway: TRACE
+       org.springframework.http.client: DEBUG
+       reactor.netty.http.client: DEBUG
+       org.springframework.cloud.loadbalancer: TRACE
