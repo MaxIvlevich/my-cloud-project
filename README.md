@@ -18,25 +18,28 @@ This project demonstrates a simple microservices application built using Spring 
 ## Architecture Overview
 
 The system consists of the following components:
-+---------------------+ +---------------------+ +---------------------+
-| |----->| |<-----| |
-| API Gateway | | Eureka Server | | Config Server |
-| (Spring Cloud Gateway)| | (Service Discovery) | | (Configuration Mgmt)|
-| localhost:8080 [] |----->| localhost:8761 | | localhost:8888 |
-| | | | | |
-+---------^-----------+ +----------^----------+ +----------^----------+
-| | |
-| routes requests | registers & discovers | provides config
-| | |
-+---------v-----------+ +----------v----------+ +---------v-----------+
-| |----->| |<---->| |
-| User Service |<-----| Company Service | | Database(s) |
-| (Spring Boot App) | | (Spring Boot App) | | (e.g., PostgreSQL) |
-| localhost:8081 [] |----->| localhost:8082 [*] | | |
-| | | | | |
-+---------------------+ +---------------------+ +---------------------+
-| |
-+-------------- Feign ------------+
+'''
++---------------------+      +---------------------+      +---------------------+
+|                     |----->|                     |<-----|                     |
+|  API Gateway        |      |   Eureka Server     |      |  Config Server      |
+| (Spring Cloud Gateway)|    | (Service Discovery) |      | (Configuration Mgmt)|
+| localhost:8080 [*]  |----->|   localhost:8761    |      |   localhost:8888    |
+|                     |      |                     |      |                     |
++---------^-----------+      +----------^----------+      +----------^----------+
+          |                             |                           |
+          | routes requests             | registers & discovers     | provides config
+          |                             |                           |
++---------v-----------+      +----------v----------+      +---------v-----------+
+|                     |----->|                     |<---->|                     |
+|  User Service       |<-----|  Company Service    |      | Database(s)         |
+| (Spring Boot App)   |      | (Spring Boot App)   |      | (e.g., PostgreSQL)  |
+| localhost:8081 [*]  |----->| localhost:8082 [*]  |      |                     |
+|                     |      |                     |      |                     |
++---------------------+      +---------------------+      +---------------------+
+       |                                |
+       +-------------- Feign ------------+
+              (Inter-service Calls)
+'''
 (Inter-service Calls)
 *   **Backend:** Java 17+, Spring Boot 3.x
 *   **Spring Cloud:** Netflix Eureka (Discovery), Config Server, Spring Cloud Gateway, OpenFeign (Client)
