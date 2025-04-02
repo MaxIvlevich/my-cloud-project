@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 /**
  * REST controller for managing user-related operations via the `/api/v1/users` endpoint.
  * <p>
@@ -23,6 +24,7 @@ import java.util.List;
 public class UserController {
 
     private final UserServiceInterface userServiceImpl;
+
     /**
      * Handles GET requests to retrieve all users.
      * <p>
@@ -35,6 +37,7 @@ public class UserController {
     public ResponseEntity<List<UserDto>> getAllUsers() {
         return ResponseEntity.ok(userServiceImpl.getAllUsers());
     }
+
     /**
      * Handles GET requests to retrieve a specific user by their ID.
      * <p>
@@ -44,12 +47,13 @@ public class UserController {
      *
      * @param id The ID of the user to retrieve, extracted from the path variable.
      * @return A {@link ResponseEntity} containing the {@link UserDto} if found (HTTP status 200 OK),
-     *         or an error response if not found.
+     * or an error response if not found.
      */
     @GetMapping("/{id}")
     public ResponseEntity<UserDto> getUserById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(userServiceImpl.getUserById(id));
     }
+
     /**
      * Handles POST requests to create a new user.
      * <p>
@@ -67,6 +71,7 @@ public class UserController {
         UserDto createdUser = userServiceImpl.createUser(createUserDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
     }
+
     /**
      * Handles PUT requests to update an existing user identified by ID.
      * <p>
@@ -79,12 +84,13 @@ public class UserController {
      * @param id            The ID of the user to update, extracted from the path variable.
      * @param updateUserDto The DTO containing the updated user data, deserialized from the request body.
      * @return A {@link ResponseEntity} containing the updated {@link UserDto} and HTTP status 200 (OK),
-     *         or an error response if the update fails.
+     * or an error response if the update fails.
      */
     @PutMapping("/{id}")
     public ResponseEntity<UserDto> updateUser(@PathVariable("id") Long id, @RequestBody UpdateUserDto updateUserDto) {
         return ResponseEntity.ok(userServiceImpl.updateUser(id, updateUserDto));
     }
+
     /**
      * Handles DELETE requests to remove a user by their ID.
      * <p>
@@ -95,13 +101,14 @@ public class UserController {
      *
      * @param id The ID of the user to delete, extracted from the path variable.
      * @return A {@link ResponseEntity} with HTTP status 204 (No Content) on success,
-     *         or an error response if the user is not found.
+     * or an error response if the user is not found.
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable("id") Long id) {
         userServiceImpl.deleteUser(id);
         return ResponseEntity.noContent().build(); // Возвращаем 204 No Content
     }
+
     /**
      * Handles GET requests to retrieve multiple users based on a list of IDs.
      * <p>
@@ -122,6 +129,7 @@ public class UserController {
         }
         return ResponseEntity.ok(userServiceImpl.getUsersByIds(ids));
     }
+
     /**
      * Handles PUT requests to set or clear the company associated with a specific user.
      * <p>

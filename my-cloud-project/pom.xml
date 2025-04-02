@@ -58,7 +58,6 @@
                 <version>${lombok.version}</version>
                 <scope>provided</scope>
             </dependency>
-            <!-- Можно добавить управление другими общими зависимостями -->
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
