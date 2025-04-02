@@ -18,7 +18,7 @@ This project demonstrates a simple microservices application built using Spring 
 ## Architecture Overview
 
 The system consists of the following components:
-'''
+ ```
 +---------------------+      +---------------------+      +---------------------+
 |                     |----->|                     |<-----|                     |
 |  API Gateway        |      |   Eureka Server     |      |  Config Server      |
@@ -39,7 +39,7 @@ The system consists of the following components:
        |                                |
        +-------------- Feign ------------+
               (Inter-service Calls)
-'''
+ ```
 (Inter-service Calls)
 *   **Backend:** Java 17+, Spring Boot 3.x
 *   **Spring Cloud:** Netflix Eureka (Discovery), Config Server, Spring Cloud Gateway, OpenFeign (Client)
