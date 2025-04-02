@@ -33,7 +33,7 @@ databaseChangeLog:
                   name: company_id
                   type: BIGINT
                   constraints:
-                    nullable: false
+                    nullable: true
 
   - changeSet:
       id: 2

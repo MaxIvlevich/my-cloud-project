@@ -26,7 +26,6 @@ public class CompanyController {
     @PostMapping
     public ResponseEntity<CompanyDto> createCompany(@RequestBody CreateCompanyDto createCompanyDto) {
         CompanyDto createdCompany = companyService.createCompany(createCompanyDto);
-        // Возвращаем 201 Created
         return ResponseEntity.status(HttpStatus.CREATED).body(createdCompany);
     }
     @PutMapping("/{id}")
