@@ -1,6 +1,5 @@
 package max.iv.companyservice.exception;
 
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.http.HttpStatus;
@@ -11,6 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.util.stream.Collectors;
 
@@ -66,6 +66,14 @@ public class GlobalExceptionHandler {
         log.error("Incorrect data is entered{}",request);
         return new ErrorResponse(System.currentTimeMillis(),"Incorrect data is entered");
 
+    }
+    // Обработчик для 404, когда НЕ НАЙДЕН КОНТРОЛЛЕР (эндпоинт)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ErrorResponse handleNoHandlerFoundException(NoHandlerFoundException e, WebRequest request) {
+        String path = e.getRequestURL(); // Получаем запрошенный путь
+        log.warn("No handler found for HTTP request {} {}", e.getHttpMethod(), path);
+        return new ErrorResponse(System.currentTimeMillis(), "Endpoint not found: " + e.getHttpMethod() + " " + path);
     }
 
 }
