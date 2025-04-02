@@ -6,8 +6,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Qualifier // Говорим MapStruct, что это квалификатор
-@Target(ElementType.METHOD) // Применяется к методам
-@Retention(RetentionPolicy.CLASS) // Доступен во время компиляции
+@Qualifier
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.CLASS)
 public @interface SimpleCompanyMapper {
 }
