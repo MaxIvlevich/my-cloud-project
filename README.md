@@ -45,3 +45,23 @@ The system consists of the following components:
 *   **Utils:** Lombok
 *   **Build:** Maven 
 *   **Containerization:** Docker, Docker Compose
+
+*   All API requests should be made through the **API Gateway**. Assuming the gateway runs on `http://localhost:8080`:
+
+*   **User Service Endpoints:** `http://localhost:8080/api/v1/users`
+    *   `GET /api/v1/users` - Get all users
+    *   `GET /api/v1/users/{id}` - Get user by ID
+    *   `POST /api/v1/users` - Create a new user
+    *   `PUT /api/v1/users/{id}` - Update user by ID
+    *   `DELETE /api/v1/users/{id}` - Delete user by ID
+    *   `GET /api/v1/users/by-ids?ids=1,2,3` - Get multiple users by IDs
+    *   `PUT /api/v1/users/{userId}/company` (Body: `companyId` or `null`) - Set/Clear user's company
+*   **Company Service Endpoints:** `http://localhost:8080/api/v1/companies`
+    *   `GET /api/v1/companies` - Get all companies (with employees)
+    *   `GET /api/v1/companies/{id}` - Get company by ID (with employees)
+    *   `POST /api/v1/companies` - Create a new company
+    *   `PUT /api/v1/companies/{id}` - Update company by ID
+    *   `DELETE /api/v1/companies/{id}` - Delete company by ID
+    *   `POST /api/v1/companies/{companyId}/employees/{employeeId}` - Add employee to company
+    *   `DELETE /api/v1/companies/{companyId}/employees/{employeeId}` - Remove employee from company
+    *   `GET /api/v1/companies/by-ids?ids=1,2,3` - Get multiple companies by IDs (simple DTOs)
