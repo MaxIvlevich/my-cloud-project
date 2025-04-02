@@ -54,7 +54,7 @@ public class UserController {
      * Handles POST requests to create a new user.
      * <p>
      * Expects a {@link CreateUserDto} in the request body. Delegates user creation
-     * to {@link UserServiceImpl#createUser(CreateUserDto)}. Returns the created
+     * to {@link UserServiceInterface#createUser(CreateUserDto)}. Returns the created
      * user's details ({@link UserDto}) in the response body with HTTP status 201 Created.
      * If creation fails (e.g., invalid company ID), the service layer should handle it,
      * potentially throwing an exception leading to an error response.
@@ -71,7 +71,7 @@ public class UserController {
      * Handles PUT requests to update an existing user identified by ID.
      * <p>
      * Expects an {@link UpdateUserDto} in the request body containing the fields to update.
-     * Delegates the update logic to {@link UserServiceImpl#updateUser(Long, UpdateUserDto)}.
+     * Delegates the update logic to {@link UserServiceInterface#updateUser(Long, UpdateUserDto)}.
      * Returns the updated user's details ({@link UserDto}) in the response body with
      * HTTP status 200 OK. Handles potential exceptions (e.g., user not found, invalid new company ID)
      * from the service layer, typically resulting in error responses.
