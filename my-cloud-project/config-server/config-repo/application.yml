@@ -14,3 +14,9 @@ eureka:
       show-details: always
       probes:
         enabled: true
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 10000

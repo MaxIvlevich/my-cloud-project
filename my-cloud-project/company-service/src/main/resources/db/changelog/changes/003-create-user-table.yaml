@@ -45,3 +45,4 @@ databaseChangeLog:
             constraintName: fk_user_company
             referencedColumnNames: id
             referencedTableName: company
+            onDelete: SET NULL

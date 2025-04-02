@@ -37,7 +37,7 @@ public class CompanyController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCompany(@PathVariable("id") Long id) {
         companyService.deleteCompany(id);
-        return ResponseEntity.noContent().build(); // Возвращаем 204 No Content
+        return ResponseEntity.noContent().build();
     }
     @PostMapping("/{companyId}/employees/{employeeId}")
     public ResponseEntity<CompanyDto> addEmployee(@PathVariable("companyId") Long companyId, @PathVariable("employeeId") Long employeeId) {

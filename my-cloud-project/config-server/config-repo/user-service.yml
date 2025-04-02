@@ -12,6 +12,8 @@ spring:
         hibernate:
           dialect: org.hibernate.dialect.PostgreSQLDialect
           format_sql: true
+      hikari:
+        maximum-pool-size: 15
 management:
   endpoints:
     web:
