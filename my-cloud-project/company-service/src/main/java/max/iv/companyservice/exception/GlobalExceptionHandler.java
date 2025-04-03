@@ -67,7 +67,7 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(System.currentTimeMillis(),"Incorrect data is entered");
 
     }
-    // Обработчик для 404, когда НЕ НАЙДЕН КОНТРОЛЛЕР (эндпоинт)
+
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(NoHandlerFoundException.class)
     public ErrorResponse handleNoHandlerFoundException(NoHandlerFoundException e, WebRequest request) {
