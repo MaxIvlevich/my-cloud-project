@@ -41,7 +41,7 @@ public class CompanyServiceImpl implements max.iv.companyservice.service.interfa
     private final CompanyMapper companyMapper;
     private final UserServiceClient userServiceClient;
 
-    private List<UserDto> fetchEmployees(List<Long> employeeIds) {
+    private List<UserDto> fetchEmployeesByIds(List<Long> employeeIds) {
         if (CollectionUtils.isEmpty(employeeIds)) {
             return Collections.emptyList();
         }
@@ -63,7 +63,7 @@ public class CompanyServiceImpl implements max.iv.companyservice.service.interfa
 
 
     private CompanyDto mapCompanyToDtoWithEmployees(Company company) {
-        List<UserDto> employees = fetchEmployees(company.getEmployeeIds());
+        List<UserDto> employees = fetchEmployeesByIds(company.getEmployeeIds());
         return companyMapper.toCompanyDtoWithEmployees(company, employees);
     }
 
@@ -121,29 +121,17 @@ public class CompanyServiceImpl implements max.iv.companyservice.service.interfa
         Map<Long, UserDto> employeeMap = new HashMap<>();
         if (CollectionUtils.isEmpty(employeeIds)) {
             log.debug("No employee IDs provided to fetch details for page {}.", pageNumber);
-            return employeeMap; // Возвращаем пустую карту
+            return employeeMap;
         }
-
         log.info("Fetching employee details for {} IDs from page {}.", employeeIds.size(), pageNumber);
-        try {
-            List<UserDto> allEmployees = fetchEmployees(new ArrayList<>(employeeIds)); // Используем реальный вызов
-            for (UserDto employee : allEmployees) {
-                if (employee != null && employee.id() != null) {
-                    employeeMap.put(employee.id(), employee);
-                }
+        List<UserDto> allEmployees = fetchEmployeesByIds(new ArrayList<>(employeeIds));
+        for (UserDto employee : allEmployees) {
+            if (employee != null && employee.id() != null) {
+                employeeMap.put(employee.id(), employee);
             }
-            log.info("Successfully fetched details for {} employees out of {} requested for page {}.",
-                    employeeMap.size(), employeeIds.size(), pageNumber);
-            if (employeeMap.size() != employeeIds.size()) {
-                Set<Long> foundIds = employeeMap.keySet();
-                Set<Long> requestedIdsCopy = new HashSet<>(employeeIds);
-                requestedIdsCopy.removeAll(foundIds);
-                log.warn("Could not fetch details for employee IDs: {}", requestedIdsCopy);
-            }
-        } catch (Exception e) {
-            log.error("Failed to fetch employee details for IDs {} from page {}: {}",
-                    employeeIds, pageNumber, e.getMessage(), e);
         }
+        log.info("Successfully mapped {} employees out of {} requested for page {}.",
+                employeeMap.size(), employeeIds.size(), pageNumber);
         return employeeMap;
     }
 
@@ -171,9 +159,11 @@ public class CompanyServiceImpl implements max.iv.companyservice.service.interfa
     @Transactional(readOnly = true)
     public CompanyDto getCompanyById(Long id) {
         log.info("Fetching company with id: {}", id);
-        Company company = companyRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + id));
-        return mapCompanyToDtoWithEmployees(company);
+        Company company = findCompanyByIdOrThrow(id);
+        List<UserDto> employees = fetchEmployeesByIds(company.getEmployeeIds());
+        CompanyDto dto = companyMapper.toCompanyDtoWithEmployees(company, employees);
+        log.info("Returning DTO for company ID: {}", id);
+        return dto;
     }
 
     @Override
@@ -190,23 +180,29 @@ public class CompanyServiceImpl implements max.iv.companyservice.service.interfa
     @Transactional
     public CompanyDto updateCompany(Long id, UpdateCompanyDto updateCompanyDto) {
         log.info("Updating company with id: {}", id);
-        Company existingCompany = companyRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + id));
-
+        Company existingCompany = findCompanyByIdOrThrow(id);
         companyMapper.updateCompanyFromDto(updateCompanyDto, existingCompany);
         Company updatedCompany = companyRepository.save(existingCompany);
         log.info("Company updated with id: {}", updatedCompany.getId());
-        return mapCompanyToDtoWithEmployees(updatedCompany);
+        List<UserDto> employees = fetchEmployeesByIds(updatedCompany.getEmployeeIds());
+        CompanyDto dto = companyMapper.toCompanyDtoWithEmployees(updatedCompany, employees);
+        log.info("Returning updated DTO for company ID: {}", id);
+        return dto;
     }
 
     @Override
     @Transactional
     public void deleteCompany(Long id) {
         log.info("Deleting company with id: {}", id);
-        if (!companyRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Company not found with id: " + id);
+        Company company = findCompanyByIdOrThrow(id);
+        List<Long> employeeIds = new ArrayList<>(company.getEmployeeIds());
+        if (!employeeIds.isEmpty()) {
+            log.info("Notifying user-service to clear company link for {} employees of company {}", employeeIds.size(), id);
+            for(Long empId : employeeIds) {
+                notifyUserServiceOfCompanyChange(empId, null);
+            }
         }
-        companyRepository.deleteById(id);
+        companyRepository.delete(company);
         log.info("Company deleted with id: {}", id);
     }
 
@@ -214,18 +210,11 @@ public class CompanyServiceImpl implements max.iv.companyservice.service.interfa
     @Transactional
     public CompanyDto addEmployeeToCompany(Long companyId, Long employeeId) {
         log.info("Adding employee {} to company {}", employeeId, companyId);
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + companyId));
-        try {
-            log.debug("Checking existence of employee with ID: {}", employeeId);
-            userServiceClient.getUserById(employeeId);
-            log.debug("Employee {} found via user-service.", employeeId);
-        } catch (Exception e) {
-            log.error("Error checking employee {} via user-service: {}", employeeId, e.getMessage(), e);
-        }
+        Company company = findCompanyByIdOrThrow(companyId);
         boolean added = false;
-        if (!company.getEmployeeIds().contains(employeeId)) {
-            company.getEmployeeIds().add(employeeId);
+        List<Long> employeeIdList = company.getEmployeeIds();
+        if (!employeeIdList.contains(employeeId)) {
+            employeeIdList.add(employeeId);
             companyRepository.save(company);
             added = true;
             log.info("Employee {} reference added locally to company {}", employeeId, companyId);
@@ -233,51 +222,35 @@ public class CompanyServiceImpl implements max.iv.companyservice.service.interfa
             log.warn("Employee {} already exists in company {}", employeeId, companyId);
         }
         if (added) {
-            try {
-                log.debug("Attempting to set companyId {} for user {}", companyId, employeeId);
-                ResponseEntity<Void> response = userServiceClient.setUserCompany(employeeId, companyId);
-                if (!response.getStatusCode().is2xxSuccessful()) {
-
-                    log.warn("User service responded with status {} while setting company for user {}",
-                            response.getStatusCode(), employeeId);
-                }
-                log.info("Successfully notified user-service to set company for user {}", employeeId);
-            } catch (Exception e) {
-                log.error("Failed to notify user-service to set company for user {}: {}", employeeId, e.getMessage());
-
-            }
+            notifyUserServiceOfCompanyChange(employeeId, companyId); // Используем хелпер
         }
-
-
-        return mapCompanyToDtoWithEmployees(company);
+        List<UserDto> employees = fetchEmployeesByIds(company.getEmployeeIds());
+        CompanyDto dto = companyMapper.toCompanyDtoWithEmployees(company, employees);
+        log.info("Returning DTO after attempting to add employee {} to company {}", employeeId, companyId);
+        return dto;
     }
 
     @Override
     @Transactional
     public CompanyDto removeEmployeeFromCompany(Long companyId, Long employeeId) {
         log.info("Removing employee {} from company {}", employeeId, companyId);
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Company not found with id: " + companyId));
-
-        boolean removed = company.getEmployeeIds().remove(employeeId);
-        if (removed) {
+        Company company = findCompanyByIdOrThrow(companyId);
+        boolean removed = false;
+        List<Long> employeeIdList = company.getEmployeeIds();
+        if (employeeIdList.remove(employeeId)) {
             companyRepository.save(company);
+            removed = true;
             log.info("Employee {} reference removed locally from company {}", employeeId, companyId);
-            try {
-                log.debug("Attempting to clear companyId for user {}", employeeId);
-                ResponseEntity<Void> response = userServiceClient.setUserCompany(employeeId, null);
-                if (!response.getStatusCode().is2xxSuccessful()) {
-                    log.warn("User service responded with status {} while clearing company for user {}",
-                            response.getStatusCode(), employeeId);
-                }
-                log.info("Successfully notified user-service to clear company for user {}", employeeId);
-            } catch (Exception e) {
-                log.error("Failed to notify user-service to clear company for user {}: {}", employeeId, e.getMessage());
-            }
         } else {
             log.warn("Employee {} not found in company {}", employeeId, companyId);
         }
-        return mapCompanyToDtoWithEmployees(company);
+        if (removed) {
+            notifyUserServiceOfCompanyChange(employeeId, null);
+        }
+        List<UserDto> employees = fetchEmployeesByIds(company.getEmployeeIds());
+        CompanyDto dto = companyMapper.toCompanyDtoWithEmployees(company, employees);
+        log.info("Returning DTO after attempting to remove employee {} from company {}", employeeId, companyId);
+        return dto;
     }
 
     @Override
@@ -291,6 +264,28 @@ public class CompanyServiceImpl implements max.iv.companyservice.service.interfa
         return companies.stream()
                 .map(companyMapper::toSimpleCompanyDto)
                 .collect(Collectors.toList());
+    }
+    private Company findCompanyByIdOrThrow(Long companyId) {
+        return companyRepository.findById(companyId)
+                .orElseThrow(() -> {
+                    log.warn("Company not found with id: {}", companyId);
+                    return new ResourceNotFoundException("Company not found with id: " + companyId);
+                });
+    }
+    private void notifyUserServiceOfCompanyChange(Long userId, Long companyId) {
+        String action = (companyId == null) ? "clearing" : "setting";
+        try {
+            log.debug("Attempting to notify user-service about {} companyId ({}) for user {}", action, companyId, userId);
+            ResponseEntity<Void> response = userServiceClient.setUserCompany(userId, companyId); // Передаем null если нужно
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.warn("User service responded with status {} while {} company for user {}",
+                        response.getStatusCode(), action, userId);
+            } else {
+                log.info("Successfully notified user-service about {} company for user {}", action, userId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to notify user-service about {} company for user {}: {}", action, userId, e.getMessage(), e);
+        }
     }
 }
 
