@@ -15,6 +15,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
@@ -49,6 +54,7 @@ public class UserServiceImplTest {
     private UserDto userDto1;
     private UserDto userDto2;
     private UserDto userDtoNoCompany;
+    Pageable expectedPageable;
     @BeforeEach
     void setUp() {
         company10 = new CompanyDto(10L, "Company Ten", BigDecimal.valueOf(10000));
@@ -78,6 +84,12 @@ public class UserServiceImplTest {
         userDto1 = new UserDto(1L, "Max", "Iv", "111", company10);
         userDto2 = new UserDto(2L, "Ivan", "Ivanovich", "222", company20);
         userDtoNoCompany = new UserDto(3L, "Vasya", "Petrov", "333", null);
+
+        int pageNumber = 0;
+        int pageSize = 5;
+        String sortField = "username";
+        Sort.Direction sortDirection = Sort.Direction.ASC;
+        Pageable expectedPageable = PageRequest.of(pageNumber, pageSize, sortDirection, sortField);
     }
         @Test
         @DisplayName("getAllUsers should return list of users with company details when users and companies exist")
@@ -86,6 +98,7 @@ public class UserServiceImplTest {
             List<User> users = List.of(user1, user2);
             List<Long> companyIds = List.of(10L, 20L);
             List<CompanyDto> companies = List.of(company10, company20);
+
 
             // Mock repository response
             when(userRepository.findAll()).thenReturn(users);
@@ -98,7 +111,7 @@ public class UserServiceImplTest {
             when(userMapper.toUserDtoWithCompany(user2, company20)).thenReturn(userDto2);
 
             // Act
-            List<UserDto> result = userServiceImpl.getAllUsers();
+            Page<UserDto> result = userServiceImpl.getAllUsers(expectedPageable);
 
             // Assert
             assertThat(result).isNotNull();
@@ -130,7 +143,7 @@ public class UserServiceImplTest {
 
 
         // Act
-        List<UserDto> result = userServiceImpl.getAllUsers();
+        Page<UserDto> result = userServiceImpl.getAllUsers(expectedPageable);
 
         // Assert
         assertThat(result).isNotNull();
@@ -152,7 +165,7 @@ public class UserServiceImplTest {
         when(userRepository.findAll()).thenReturn(Collections.emptyList());
 
         // Act
-        List<UserDto> result = userServiceImpl.getAllUsers();
+        Page<UserDto> result = userServiceImpl.getAllUsers(expectedPageable);
 
         // Assert
         assertThat(result).isNotNull();

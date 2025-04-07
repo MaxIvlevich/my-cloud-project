@@ -3,13 +3,15 @@ package max.iv.userservice.service.interfaces;
 import max.iv.userservice.DTO.CreateUserDto;
 import max.iv.userservice.DTO.UpdateUserDto;
 import max.iv.userservice.DTO.UserDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 public interface UserServiceInterface {
     @Transactional(readOnly = true)
-    List<UserDto> getAllUsers();
+    Page<UserDto> getAllUsers(Pageable pageable);
 
     @Transactional(readOnly = true)
     UserDto getUserById(Long id);
