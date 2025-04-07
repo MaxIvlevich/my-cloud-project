@@ -13,6 +13,7 @@ import max.iv.userservice.models.User;
 import max.iv.userservice.repository.UserRepository;
 import max.iv.userservice.service.interfaces.UserServiceInterface;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 /**
  * Service class responsible for managing user data.
  * It interacts with the {@link UserRepository} for persistence,
@@ -42,9 +44,14 @@ public class UserServiceImpl implements UserServiceInterface {
     @Override
     @Transactional(readOnly = true)
     public Page<UserDto> getAllUsers(Pageable pageable) {
-        log.info("Fetching all users,pageable");
+        log.info("Fetching users page. Page number: {}, Page size: {}, Sort: {}",
+                pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
         Page<User> userPage = userRepository.findAll(pageable);
-        return userPage.map(userMapper:: toUserDto);
+        List<User> usersOnPage = userPage.getContent();
+        List<UserDto> enrichedUserDTOs = enrichUsersWithCompanies(usersOnPage);
+        log.info("Successfully enriched {} users for page {}.", enrichedUserDTOs.size(), pageable.getPageNumber());
+
+        return new PageImpl<>(enrichedUserDTOs, pageable, userPage.getTotalElements());
     }
 
     private List<UserDto> enrichUsersWithCompanies(List<User> users) {
@@ -93,9 +100,16 @@ public class UserServiceImpl implements UserServiceInterface {
     @Override
     @Transactional(readOnly = true)
     public UserDto getUserById(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
-        return mapUserToDtoWithCompany(user);
+        Optional<User> userOptional = userRepository.findById(id);
+
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            log.info("User found with ID: {}", id);
+            return mapUserToDtoWithCompany(user);
+        } else {
+            log.warn("User not found with ID: {}", id);
+            throw new ResourceNotFoundException("User not found with id: " + id);
+        }
     }
 
     private UserDto mapUserToDtoWithCompany(User user) {
@@ -123,6 +137,7 @@ public class UserServiceImpl implements UserServiceInterface {
         }
         User user = userMapper.createUserDtoToUser(createUserDto);
         User savedUser = userRepository.save(user);
+        log.info("Created new user with id {} and  name {}",savedUser.getId(),savedUser.getFirstName() );
         return mapUserToDtoWithCompany(savedUser);
     }
 
@@ -150,16 +165,22 @@ public class UserServiceImpl implements UserServiceInterface {
             throw new ResourceNotFoundException("User not found with id: " + id);
         }
         userRepository.deleteById(id);
+        if (!userRepository.existsById(id)) {
+            log.info("User with id {} deleted", id);
+        } else log.error("couldn't delete user with id{}", id);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<UserDto> getUsersByIds(List<Long> ids) {
-        log.info("Fetching users by ids: {}", ids);
+        log.debug("Attempting to get users by IDs. Requested count: {}", ids == null ? "null" : ids.size());
         if (CollectionUtils.isEmpty(ids)) {
+            log.info("Input ID list is empty or null. Returning empty list.");
             return Collections.emptyList();
         }
+        log.debug("Fetching User entities from repository for {} IDs.", ids.size());
         List<User> users = userRepository.findByIdIn(ids);
+        log.debug("Found {} User entities for {} requested IDs.", users.size(), ids.size());
         return enrichUsersWithCompanies(users);
     }
 
