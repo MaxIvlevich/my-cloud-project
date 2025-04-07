@@ -71,7 +71,7 @@ public class UserServiceImpl implements UserServiceInterface {
                 log.info("Fetching company details for IDs: {}", companyIds);
                 List<CompanyDto> companies = companyServiceClient.getCompaniesByIds(new ArrayList<>(companyIds));
                 companyMap = companies.stream()
-                        .collect(Collectors.toMap(CompanyDto::id, Function.identity())); // Ключ - ID компании, Значение - CompanyDto
+                        .collect(Collectors.toMap(CompanyDto::id, Function.identity()));
 
                 log.info("Successfully fetched details for {} companies out of {} requested.", companyMap.size(), companyIds.size());
                 if (companyMap.size() != companyIds.size()) {
@@ -101,7 +101,6 @@ public class UserServiceImpl implements UserServiceInterface {
     @Transactional(readOnly = true)
     public UserDto getUserById(Long id) {
         Optional<User> userOptional = userRepository.findById(id);
-
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             log.info("User found with ID: {}", id);
@@ -144,8 +143,7 @@ public class UserServiceImpl implements UserServiceInterface {
     @Override
     @Transactional
     public UserDto updateUser(Long id, UpdateUserDto updateUserDto) {
-        User existingUser = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        User existingUser =  findUserByIdOrThrow(id);
         if (updateUserDto.companyId() != null && !updateUserDto.companyId().equals(existingUser.getCompanyId())) {
             try {
                 companyServiceClient.getCompanyById(updateUserDto.companyId());
@@ -161,13 +159,10 @@ public class UserServiceImpl implements UserServiceInterface {
     @Override
     @Transactional
     public void deleteUser(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("User not found with id: " + id);
-        }
-        userRepository.deleteById(id);
-        if (!userRepository.existsById(id)) {
-            log.info("User with id {} deleted", id);
-        } else log.error("couldn't delete user with id{}", id);
+        log.info("Attempting to delete user with id: {}", id);
+        User user = findUserByIdOrThrow(id);
+        userRepository.delete(user);
+        log.info("User with id {} successfully deleted", id);
     }
 
     @Override
@@ -188,8 +183,7 @@ public class UserServiceImpl implements UserServiceInterface {
     @Transactional
     public void setUserCompany(Long userId, Long companyId) {
         log.info("Setting companyId {} for user {}", companyId, userId);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        User user = findUserByIdOrThrow(userId);
         if (companyId != null) {
             try {
                 companyServiceClient.getCompanyById(companyId);
@@ -202,5 +196,13 @@ public class UserServiceImpl implements UserServiceInterface {
         user.setCompanyId(companyId);
         userRepository.save(user);
         log.info("Successfully updated companyId for user {}", userId);
+    }
+
+    private User findUserByIdOrThrow(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> {
+                    log.warn("User not found with id: {}", userId);
+                    return new ResourceNotFoundException("User not found with id: " + userId);
+                });
     }
 }
