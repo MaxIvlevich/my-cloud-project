@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 /**
@@ -44,9 +45,10 @@ public class UserController {
 
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserDto> getUserById(@PathVariable("id")
-                                               @Min(value = 1, message = "User ID must be positive")
-                                               Long id) {
+    public ResponseEntity<UserDto> getUserById(
+            @PathVariable("id")
+            @Min(value = 1, message = "User ID must be positive")
+            Long id) {
         log.info("getUserById request with id {}", id);
         return ResponseEntity.ok(userServiceImpl.getUserById(id));
     }

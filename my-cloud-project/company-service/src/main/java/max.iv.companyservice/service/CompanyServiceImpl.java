@@ -11,13 +11,15 @@ import max.iv.companyservice.model.Company;
 import max.iv.companyservice.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -39,17 +41,6 @@ public class CompanyServiceImpl implements max.iv.companyservice.service.interfa
     private final CompanyMapper companyMapper;
     private final UserServiceClient userServiceClient;
 
-    /**
-     * Fetches details for a list of employees using their IDs via the UserServiceClient.
-     * <p>
-     * Handles empty input lists and catches exceptions during the service call, logging errors
-     * and returning an empty list in case of failure. It also logs a warning if not all
-     * requested employee IDs could be found by the user service.
-     *
-     * @param employeeIds A list of employee (user) IDs to fetch.
-     * @return A list of {@link UserDto} objects representing the fetched employees.
-     * Returns an empty list if the input list is empty or if the call fails.
-     */
     private List<UserDto> fetchEmployees(List<Long> employeeIds) {
         if (CollectionUtils.isEmpty(employeeIds)) {
             return Collections.emptyList();
@@ -58,7 +49,6 @@ public class CompanyServiceImpl implements max.iv.companyservice.service.interfa
             log.debug("Fetching employees with IDs: {}", employeeIds);
             List<UserDto> employees = userServiceClient.getUsersByIds(employeeIds);
             log.debug("Fetched {} employees", employees.size());
-            // Проверяем, все ли запрошенные ID вернулись (опционально)
             if (employees.size() != employeeIds.size()) {
                 Set<Long> returnedIds = employees.stream().map(UserDto::id).collect(Collectors.toSet());
                 List<Long> missingIds = employeeIds.stream().filter(id -> !returnedIds.contains(id)).toList();
@@ -80,33 +70,102 @@ public class CompanyServiceImpl implements max.iv.companyservice.service.interfa
 
     @Override
     @Transactional(readOnly = true)
-    public List<CompanyDto> getAllCompanies() {
-        log.info("Fetching all companies");
-        List<Company> companies = companyRepository.findAll();
-        if (companies.isEmpty()) {
+    public Page<CompanyDto> getAllCompanies(Pageable pageable) {
+        log.debug("Attempting to fetch companies page. Page: {}, Size: {}, Sort: {}",
+                pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        Page<Company> companyPage = companyRepository.findAll(pageable);
+        List<Company> companiesOnPage = companyPage.getContent();
+        if (companiesOnPage.isEmpty()) {
+            log.info("No companies found on page {}. Returning empty page.", pageable.getPageNumber());
+            return Page.empty(pageable);
+        }
+        log.debug("Found {} companies on page {}.", companiesOnPage.size(), pageable.getPageNumber());
+
+        Set<Long> employeeIds = collectEmployeeIds(companiesOnPage);
+        Map<Long, UserDto> employeeMap = fetchAndMapEmployees(employeeIds, pageable.getPageNumber());
+        List<CompanyDto> companyDtos = mapCompaniesToDto(companiesOnPage, employeeMap);
+        log.info("Finished processing getAllCompanies page {}. Returning {} company DTOs. Total elements: {}.",
+                pageable.getPageNumber(), companyDtos.size(), companyPage.getTotalElements());
+        return new PageImpl<>(companyDtos, pageable, companyPage.getTotalElements());
+
+    }
+
+    private List<CompanyDto> mapCompaniesToDto(List<Company> companies, Map<Long, UserDto> employeeMap) {
+        if (CollectionUtils.isEmpty(companies)) {
             return Collections.emptyList();
         }
-        Set<Long> allEmployeeIds = companies.stream()
-                .map(Company::getEmployeeIds)
-                .flatMap(List::stream)
-                .collect(Collectors.toSet());
-        Map<Long, UserDto> employeeMap = new HashMap<>();
-        if (!allEmployeeIds.isEmpty()) {
-            List<UserDto> allEmployees = fetchEmployees(new ArrayList<>(allEmployeeIds));
-            employeeMap = allEmployees.stream()
-                    .collect(Collectors.toMap(UserDto::id, Function.identity()));
+        List<CompanyDto> companyDtos = new ArrayList<>();
+        for (Company company : companies) {
+            List<UserDto> companyEmployees = new ArrayList<>();
+            List<Long> currentEmployeeIds = company.getEmployeeIds(); // Предполагаем getEmployeeIds() -> List<Long>
+
+            if (!CollectionUtils.isEmpty(currentEmployeeIds)) {
+                for (Long empId : currentEmployeeIds) {
+                    if (empId != null) {
+                        UserDto employee = employeeMap.get(empId); // Ищем в карте
+                        if (employee != null) {
+                            companyEmployees.add(employee);
+                        }
+                    }
+                }
+            }
+            CompanyDto dto = companyMapper.toCompanyDtoWithEmployees(company, companyEmployees);
+            companyDtos.add(dto);
         }
-        Map<Long, UserDto> finalEmployeeMap = employeeMap; // Для лямбды
-        return companies.stream()
-                .map(company -> {
-                    List<UserDto> companyEmployees = company.getEmployeeIds().stream()
-                            .map(finalEmployeeMap::get)
-                            .filter(Objects::nonNull)
-                            .toList();
-                    return companyMapper.toCompanyDtoWithEmployees(company, companyEmployees);
-                })
-                .collect(Collectors.toList());
+        log.debug("Mapped {} companies to DTOs.", companyDtos.size());
+        return companyDtos;
+
     }
+
+    private Map<Long, UserDto> fetchAndMapEmployees(Set<Long> employeeIds, int pageNumber) {
+        Map<Long, UserDto> employeeMap = new HashMap<>();
+        if (CollectionUtils.isEmpty(employeeIds)) {
+            log.debug("No employee IDs provided to fetch details for page {}.", pageNumber);
+            return employeeMap; // Возвращаем пустую карту
+        }
+
+        log.info("Fetching employee details for {} IDs from page {}.", employeeIds.size(), pageNumber);
+        try {
+            List<UserDto> allEmployees = fetchEmployees(new ArrayList<>(employeeIds)); // Используем реальный вызов
+            for (UserDto employee : allEmployees) {
+                if (employee != null && employee.id() != null) {
+                    employeeMap.put(employee.id(), employee);
+                }
+            }
+            log.info("Successfully fetched details for {} employees out of {} requested for page {}.",
+                    employeeMap.size(), employeeIds.size(), pageNumber);
+            if (employeeMap.size() != employeeIds.size()) {
+                Set<Long> foundIds = employeeMap.keySet();
+                Set<Long> requestedIdsCopy = new HashSet<>(employeeIds);
+                requestedIdsCopy.removeAll(foundIds);
+                log.warn("Could not fetch details for employee IDs: {}", requestedIdsCopy);
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch employee details for IDs {} from page {}: {}",
+                    employeeIds, pageNumber, e.getMessage(), e);
+        }
+        return employeeMap;
+    }
+
+    private Set<Long> collectEmployeeIds(List<Company> companies) {
+        Set<Long> allEmployeeIds = new HashSet<>();
+        if (CollectionUtils.isEmpty(companies)) {
+            return allEmployeeIds;
+        }
+        for (Company company : companies) {
+            List<Long> employeeIds = company.getEmployeeIds();
+            if (!CollectionUtils.isEmpty(employeeIds)) {
+                for (Long empId : employeeIds) {
+                    if (empId != null) {
+                        allEmployeeIds.add(empId);
+                    }
+                }
+            }
+        }
+        log.debug("Collected {} unique employee IDs from the list of companies.", allEmployeeIds.size());
+        return allEmployeeIds;
+    }
+
 
     @Override
     @Transactional(readOnly = true)
